@@ -65,7 +65,7 @@ def predict():
     except:
         return redirect('/')
 
-# Bagian ini tetap ada untuk run lokal, Vercel akan mengabaikannya
-if __name__ == '__main__':
 app = app
+
+if __name__ == '__main__':
     app.run(debug=True)
