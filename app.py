@@ -1,73 +1,68 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect
 import joblib
 import numpy as np
+import os
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import seaborn as sns
 import io
 import base64
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 app = Flask(__name__)
 
-# Load model dan data test
-model = joblib.load('model_jumlah_pasien.pkl')
-X_all, y_all, y_pred_all = joblib.load('test_data.pkl')
+# Menggunakan path absolut agar Vercel tidak tersesat
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+model_path = os.path.join(BASE_DIR, 'model_jumlah_pasien.pkl')
+test_data_path = os.path.join(BASE_DIR, 'test_data.pkl')
 
-# Hitung metrik
-mae = mean_absolute_error(y_all, y_pred_all)
-mse = mean_squared_error(y_all, y_pred_all)
-r2 = r2_score(y_all, y_pred_all)
+def load_assets():
+    try:
+        model = joblib.load(model_path)
+        test_data = joblib.load(test_data_path)
+        return model, test_data
+    except Exception as e:
+        print(f"DEBUG ERROR: {e}")
+        return None, None
 
-def plot_comparison():
-    """Scatter plot data aktual dan garis regresi linear dengan tema medis"""
-    plt.style.use('seaborn-v0_8-whitegrid')
-    plt.figure(figsize=(10, 6), facecolor='#ffffff')
-    
+def generate_plot(model, X_all, y_all):
+    sns.set_theme(style="whitegrid")
+    plt.figure(figsize=(10, 6))
     tahun = X_all['tahun'].values
+    plt.scatter(tahun, y_all, color='#2563eb', label='Data Aktual', s=120, edgecolors='white', linewidth=2)
     
-    # Data aktual Deep Blue
-    plt.scatter(tahun, y_all, color='#1e3a8a', label='Data Aktual', s=100, alpha=0.8, edgecolors='white', linewidth=1.5)
-    
-    # Tren Prediksi Teal
     x_range = np.linspace(tahun.min() - 0.5, tahun.max() + 0.5, 100).reshape(-1, 1)
     y_range = model.predict(x_range)
-    plt.plot(x_range, y_range, color='#0d9488', linewidth=3, label='Tren Prediksi', linestyle='-')
+    plt.plot(x_range, y_range, color='#ef4444', linewidth=3, label='Tren Prediksi Linear')
     
-    plt.gca().spines['top'].set_visible(False)
-    plt.gca().spines['right'].set_visible(False)
-    plt.grid(True, linestyle='--', alpha=0.4)
-    
-    plt.xlabel('Tahun Analisis', fontsize=11, fontweight='bold', color='#475569')
-    plt.ylabel('Volume Pasien', fontsize=11, fontweight='bold', color='#475569')
-    plt.title('Visualisasi Tren Kunjungan Pasien', fontsize=14, fontweight='bold', pad=20, color='#1e293b')
-    
-    plt.legend(frameon=True, facecolor='white', shadow=True)
+    plt.legend()
     plt.tight_layout()
-    
     img = io.BytesIO()
-    plt.savefig(img, format='png', dpi=150)
+    plt.savefig(img, format='png', dpi=120)
     img.seek(0)
-    plot_url = base64.b64encode(img.getvalue()).decode()
-    plt.close()
-    return plot_url
+    return base64.b64encode(img.getvalue()).decode()
 
 @app.route('/')
 def index():
-    plot_url = plot_comparison()
-    return render_template('index.html', plot_url=plot_url, mae=mae, mse=mse, r2=r2, prediksi=None)
+    model, data = load_assets()
+    if model and data:
+        X_all, y_all, y_pred, mae, mse, r2 = data
+        plot_url = generate_plot(model, X_all, y_all)
+        return render_template('index.html', plot_url=plot_url, mae=f"{mae:.2f}", mse=f"{mse:.2f}", r2=f"{r2:.2f}")
+    return "Gagal memuat model. Pastikan file .pkl ada di root dan tidak rusak."
 
 @app.route('/predict', methods=['POST'])
 def predict():
+    model, data = load_assets()
+    if not model: return redirect('/')
     try:
         tahun = int(request.form['tahun'])
-        input_data = np.array([[tahun]])
-        pred = model.predict(input_data)[0]
-        plot_url = plot_comparison()
-        return render_template('index.html', plot_url=plot_url, mae=mae, mse=mse, r2=r2, prediksi=round(pred, 0))
-    except Exception as e:
-        plot_url = plot_comparison()
-        return render_template('index.html', plot_url=plot_url, mae=mae, mse=mse, r2=r2, error=str(e))
+        pred = model.predict(np.array([[tahun]]))[0]
+        X_all, y_all, _, mae, mse, r2 = data
+        plot_url = generate_plot(model, X_all, y_all)
+        return render_template('index.html', plot_url=plot_url, mae=f"{mae:.2f}", mse=f"{mse:.2f}", r2=f"{r2:.2f}", prediksi=round(pred, 0), input_tahun=tahun)
+    except:
+        return redirect('/')
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# Export untuk Vercel
+app = app
