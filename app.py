@@ -67,4 +67,5 @@ def predict():
 
 # Bagian ini tetap ada untuk run lokal, Vercel akan mengabaikannya
 if __name__ == '__main__':
+app = app
     app.run(debug=True)
