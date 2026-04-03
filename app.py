@@ -1,17 +1,21 @@
 from flask import Flask, render_template, request, redirect
 import joblib
 import numpy as np
+import os
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont
+import matplotlib
+matplotlib.use('Agg')          # Wajib untuk environment tanpa GUI
+import matplotlib.pyplot as plt
+import seaborn as sns
 import io
 import base64
 
 app = Flask(__name__)
 
-# Tentukan base directory
+# Tentukan base directory dari file ini
 BASE_DIR = Path(__file__).parent
 
-# Load model dan data
+# Load model dan data dengan absolute path
 model_path = BASE_DIR / 'model_jumlah_pasien.pkl'
 test_data_path = BASE_DIR / 'test_data.pkl'
 
@@ -19,57 +23,29 @@ model = joblib.load(model_path)
 X_all, y_all, y_pred_all, mae, mse, r2 = joblib.load(test_data_path)
 
 def plot_comparison():
-    # Data
+    sns.set_theme(style="whitegrid")
+    plt.figure(figsize=(10, 6))
+    
     tahun = X_all['tahun'].values
-    y_aktual = y_all.values
-    # Prediksi untuk range tahun
-    x_range = np.linspace(tahun.min() - 0.5, tahun.max() + 0.5, 100)
-    y_range = model.predict(x_range.reshape(-1, 1))
     
-    # Ukuran gambar
-    width, height = 800, 500
-    margin = 60
+    plt.scatter(tahun, y_all, color='#2563eb', label='Data Aktual', s=120, edgecolors='white', linewidth=2, zorder=3)
     
-    # Buat gambar putih
-    img = Image.new('RGB', (width, height), color='white')
-    draw = ImageDraw.Draw(img)
+    x_range = np.linspace(tahun.min() - 0.5, tahun.max() + 0.5, 100).reshape(-1, 1)
+    y_range = model.predict(x_range)
+    plt.plot(x_range, y_range, color='#ef4444', linewidth=3, label='Tren Prediksi Linear', zorder=2)
     
-    # Skala
-    x_min, x_max = tahun.min() - 0.5, tahun.max() + 0.5
-    y_min, y_max = min(y_aktual.min(), y_range.min()) - 5000, max(y_aktual.max(), y_range.max()) + 5000
+    plt.title('Visualisasi Tren Pertumbuhan Pasien', fontsize=16, fontweight='bold', pad=20, color='#1e293b')
+    plt.xlabel('Tahun', fontsize=12, fontweight='600')
+    plt.ylabel('Jumlah Pasien (Jiwa)', fontsize=12, fontweight='600')
     
-    def map_x(x):
-        return margin + (x - x_min) / (x_max - x_min) * (width - 2 * margin)
-    
-    def map_y(y):
-        return height - margin - (y - y_min) / (y_max - y_min) * (height - 2 * margin)
-    
-    # Gambar sumbu
-    draw.line([(margin, height - margin), (width - margin, height - margin)], fill='black', width=2)
-    draw.line([(margin, margin), (margin, height - margin)], fill='black', width=2)
-    
-    # Label sumbu
-    try:
-        font = ImageFont.truetype("arial.ttf", 16)
-    except:
-        font = ImageFont.load_default()
-    draw.text((width//2 - 20, height - 30), "Tahun", fill='black', font=font)
-    draw.text((20, height//2), "Jumlah Pasien", fill='black', font=font)
-    
-    # Gambar garis regresi
-    points = [(map_x(x), map_y(y)) for x, y in zip(x_range, y_range)]
-    draw.line(points, fill='#ef4444', width=3)
-    
-    # Gambar titik data aktual
-    for x, y in zip(tahun, y_aktual):
-        xp, yp = map_x(x), map_y(y)
-        draw.ellipse([xp-6, yp-6, xp+6, yp+6], fill='#2563eb', outline='white')
-    
-    # Simpan ke base64
-    img_buffer = io.BytesIO()
-    img.save(img_buffer, format='PNG')
-    img_buffer.seek(0)
-    plot_url = base64.b64encode(img_buffer.getvalue()).decode()
+    plt.legend(frameon=True, facecolor='white', shadow=True)
+    plt.tight_layout()
+
+    img = io.BytesIO()
+    plt.savefig(img, format='png', dpi=120)
+    img.seek(0)
+    plot_url = base64.b64encode(img.getvalue()).decode()
+    plt.close()
     return plot_url
 
 @app.route('/')
