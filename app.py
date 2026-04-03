@@ -1,11 +1,10 @@
 from flask import Flask, render_template, request, redirect
 import joblib
 import numpy as np
+import pandas as pd
 import os
-import matplotlib
-matplotlib.use('Agg')          # Wajib untuk Vercel
-import matplotlib.pyplot as plt
-import seaborn as sns
+from pathlib import Path
+from PIL import Image, ImageDraw, ImageFont
 import io
 import base64
 
