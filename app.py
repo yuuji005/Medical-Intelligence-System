@@ -54,6 +54,6 @@ def predict():
         return render_template('index.html', plot_url=plot_url, mae=f"{mae:.2f}", mse=f"{mse:.2f}", r2=f"{r2:.2f}", prediksi=round(pred, 0), input_tahun=tahun)
     except:
         return redirect('/')
-
+app = app
 if __name__ == '__main__':
     app.run(debug=True)
