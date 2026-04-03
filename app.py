@@ -1,8 +1,10 @@
-from flask import Flask, render_template, request, redirect   # redirect ditambahkan
+from flask import Flask, render_template, request, redirect
 import joblib
 import numpy as np
+import os
+from pathlib import Path
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('Agg')          # Wajib untuk environment tanpa GUI
 import matplotlib.pyplot as plt
 import seaborn as sns
 import io
@@ -10,9 +12,15 @@ import base64
 
 app = Flask(__name__)
 
-# Load model dan data
-model = joblib.load('model_jumlah_pasien.pkl')
-X_all, y_all, y_pred_all, mae, mse, r2 = joblib.load('test_data.pkl')
+# Tentukan base directory dari file ini
+BASE_DIR = Path(__file__).parent
+
+# Load model dan data dengan absolute path
+model_path = BASE_DIR / 'model_jumlah_pasien.pkl'
+test_data_path = BASE_DIR / 'test_data.pkl'
+
+model = joblib.load(model_path)
+X_all, y_all, y_pred_all, mae, mse, r2 = joblib.load(test_data_path)
 
 def plot_comparison():
     sns.set_theme(style="whitegrid")
@@ -54,6 +62,6 @@ def predict():
         return render_template('index.html', plot_url=plot_url, mae=f"{mae:.2f}", mse=f"{mse:.2f}", r2=f"{r2:.2f}", prediksi=round(pred, 0), input_tahun=tahun)
     except:
         return redirect('/')
-app = app
+
 if __name__ == '__main__':
     app.run(debug=True)
