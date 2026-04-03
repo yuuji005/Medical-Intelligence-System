@@ -1,7 +1,6 @@
 flask
-pandas
+joblib
 numpy
 scikit-learn
-seaborn
-joblib
-matplotlib
+pandas
+Pillow
