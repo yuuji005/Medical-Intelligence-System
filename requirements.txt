@@ -2,6 +2,5 @@ flask
 joblib
 numpy
 scikit-learn
-matplotlib
-seaborn
 pandas
+pillow
