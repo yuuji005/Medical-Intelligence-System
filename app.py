@@ -4,7 +4,7 @@ import numpy as np
 import os
 from pathlib import Path
 import matplotlib
-matplotlib.use('Agg')          # Wajib untuk environment tanpa GUI
+matplotlib.use('Agg')          # Wajib untuk environment tanpa GUI seperti Vercel
 import matplotlib.pyplot as plt
 import seaborn as sns
 import io
@@ -12,15 +12,17 @@ import base64
 
 app = Flask(__name__)
 
-# Tentukan base directory dari file ini
+# --- PENYESUAIAN PATH UNTUK VERCEL ---
+# Mengambil path folder tempat file app.py ini berada
 BASE_DIR = Path(__file__).parent
 
-# Load model dan data dengan absolute path
 model_path = BASE_DIR / 'model_jumlah_pasien.pkl'
 test_data_path = BASE_DIR / 'test_data.pkl'
 
+# Load model dan data menggunakan path yang sudah dinamis
 model = joblib.load(model_path)
 X_all, y_all, y_pred_all, mae, mse, r2 = joblib.load(test_data_path)
+# -------------------------------------
 
 def plot_comparison():
     sns.set_theme(style="whitegrid")
@@ -63,5 +65,6 @@ def predict():
     except:
         return redirect('/')
 
+# Bagian ini tetap ada untuk run lokal, Vercel akan mengabaikannya
 if __name__ == '__main__':
     app.run(debug=True)
